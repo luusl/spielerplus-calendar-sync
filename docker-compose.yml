@@ -1,0 +1,14 @@
+services:
+  calendar-sync:
+    image: ghcr.io/luusl/spielerplus-calendar-sync:latest   # lowercase!
+    restart: unless-stopped
+    init: true
+    env_file: .env            # SPIELERPLUS_EMAIL, SPIELERPLUS_PASSWORD, ...
+    environment:              # these override same-named values in .env
+      SYNC_INTERVAL_SECONDS: "3600"
+      CALENDAR_SYNC_JOBS_FILE: /config/jobs.toml
+      GOOGLE_CREDENTIALS_PATH: /config/google_credentials.json
+      GOOGLE_TOKEN_PATH: /data/google_token.json
+    volumes:
+      - ./config:/config:ro   # jobs.toml + google_credentials.json
+      - ./data:/data          # google_token.json (must be writable by uid 1000)
