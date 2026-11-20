@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+tests
+systemd
+scripts
+.env
+jobs.toml
+google_credentials.json
+google_token.json
