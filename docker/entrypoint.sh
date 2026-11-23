@@ -5,8 +5,17 @@
 #   docker run ... IMAGE sync --job u7
 set -eu
 
+if [ "${1:-loop}" = "google-login" ]; then
+  shift
+  exec python /usr/local/bin/google-login.py "$@"   # headless copy/paste login
+fi
+
 if [ "${1:-loop}" != "loop" ]; then
   exec calendar-sync "$@"
+fi
+
+if [ ! -f "${GOOGLE_TOKEN_PATH:-/data/google_token.json}" ]; then
+  echo "WARNING: no Google token yet. Run once:  docker compose run --rm calendar-sync google-login"
 fi
 
 interval="${SYNC_INTERVAL_SECONDS:-3600}"
