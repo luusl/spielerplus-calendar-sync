@@ -82,7 +82,9 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
     if jobs is None:
         google_calendar = _build_google_client(settings)
-        result = SyncService(spielerplus, google_calendar).sync()
+        result = SyncService(
+            spielerplus, google_calendar, use_meeting_time=settings.use_meeting_time
+        ).sync()
         _print_sync_result(None, result)
         return 0
 
@@ -94,7 +96,12 @@ def cmd_sync(args: argparse.Namespace) -> int:
                 spielerplus.switch_user(job.spielerplus_user_id)
             google_calendar = _google_client_for_job(settings, job, service_cache)
             title_builder = prefixed_title_builder(job.title_prefix)
-            result = SyncService(spielerplus, google_calendar, title_builder=title_builder).sync()
+            result = SyncService(
+                spielerplus,
+                google_calendar,
+                title_builder=title_builder,
+                use_meeting_time=job.use_meeting_time,
+            ).sync()
             _print_sync_result(job.name, result)
         except (SpielerPlusError, GoogleCalendarError) as exc:
             print(f"[{job.name}] FAILED: {exc}", file=sys.stderr)
@@ -154,7 +161,7 @@ def cmd_list_jobs(args: argparse.Namespace) -> int:
             f"{job.name}: spielerplus_user_id={job.spielerplus_user_id!r} "
             f"google_calendar_id={job.google_calendar_id!r} sync_tag={job.sync_tag!r} "
             f"timezone={job.timezone!r} google_token_path={job.google_token_path} "
-            f"title_prefix={job.title_prefix!r}"
+            f"title_prefix={job.title_prefix!r} use_meeting_time={job.use_meeting_time}"
         )
     return 0
 

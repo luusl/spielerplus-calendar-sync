@@ -64,6 +64,7 @@ cp .env.example .env
 | `GOOGLE_TOKEN_PATH` | no (default `google_token.json`) | Where the OAuth refresh token is cached after the first login |
 | `CALENDAR_SYNC_TIMEZONE` | no (default `Europe/Berlin`) | IANA timezone used for created events |
 | `CALENDAR_SYNC_TAG` | no (default `spielerplus-sync`) | Tag used to identify events this tool manages |
+| `CALENDAR_SYNC_USE_MEETING_TIME` | no (default `false`) | Start events at the meeting time ("Treffen") instead of the start time; the real start goes into the description. Can also be set per job as `use_meeting_time = true` in the jobs file |
 | `CALENDAR_SYNC_JOBS_FILE` | no | Path to a multi-job TOML config — see [Multiple jobs](#multiple-jobs) |
 
 ### Setting up Google Calendar API access
