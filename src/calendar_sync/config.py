@@ -19,6 +19,19 @@ _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"", "0", "false", "no", "off"}
 
 
+def _env_int(env: dict[str, str], name: str, default: int, minimum: int = 0) -> int:
+    raw = env.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw.strip())
+    except ValueError as exc:
+        raise ConfigError(f"{name} must be a whole number, got {raw!r}") from exc
+    if value < minimum:
+        raise ConfigError(f"{name} must be at least {minimum}, got {value}")
+    return value
+
+
 def _env_bool(env: dict[str, str], name: str, default: bool = False) -> bool:
     raw = env.get(name)
     if raw is None:
@@ -52,6 +65,8 @@ class Settings:
     sync_tag: str = "spielerplus-sync"
     jobs_file: Path | None = None
     use_meeting_time: bool = False
+    include_location: bool = False
+    location_lookahead_days: int = 14
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
@@ -75,6 +90,8 @@ class Settings:
             sync_tag=env.get("CALENDAR_SYNC_TAG", "spielerplus-sync"),
             jobs_file=Path(jobs_file) if jobs_file else None,
             use_meeting_time=_env_bool(env, "CALENDAR_SYNC_USE_MEETING_TIME"),
+            include_location=_env_bool(env, "CALENDAR_SYNC_INCLUDE_LOCATION"),
+            location_lookahead_days=_env_int(env, "CALENDAR_SYNC_LOCATION_LOOKAHEAD_DAYS", 14),
         )
 
 
@@ -95,6 +112,7 @@ class JobConfig:
     timezone: str | None = None
     title_prefix: str | None = None
     use_meeting_time: bool | None = None
+    include_location: bool | None = None
 
     def resolve(self, settings: Settings) -> "ResolvedJob":
         calendar_id = self.google_calendar_id or settings.google_calendar_id
@@ -112,6 +130,9 @@ class JobConfig:
             use_meeting_time=(
                 settings.use_meeting_time if self.use_meeting_time is None else self.use_meeting_time
             ),
+            include_location=(
+                settings.include_location if self.include_location is None else self.include_location
+            ),
         )
 
 
@@ -127,6 +148,7 @@ class ResolvedJob:
     timezone: str
     title_prefix: str | None = None
     use_meeting_time: bool = False
+    include_location: bool = False
 
 
 def load_jobs(path: str | Path) -> list[JobConfig]:
@@ -160,9 +182,12 @@ def load_jobs(path: str | Path) -> list[JobConfig]:
             raise ConfigError(f"duplicate job name {name!r} in {path}")
         seen_names.add(name)
 
-        use_meeting_time = entry.get("use_meeting_time")
-        if use_meeting_time is not None and not isinstance(use_meeting_time, bool):
-            raise ConfigError(f"job {name!r}: use_meeting_time must be true or false")
+        flags = {}
+        for flag in ("use_meeting_time", "include_location"):
+            value = entry.get(flag)
+            if value is not None and not isinstance(value, bool):
+                raise ConfigError(f"job {name!r}: {flag} must be true or false")
+            flags[flag] = value
 
         token_path = entry.get("google_token_path")
         jobs.append(
@@ -174,7 +199,8 @@ def load_jobs(path: str | Path) -> list[JobConfig]:
                 sync_tag=entry.get("sync_tag"),
                 timezone=entry.get("timezone"),
                 title_prefix=entry.get("title_prefix"),
-                use_meeting_time=use_meeting_time,
+                use_meeting_time=flags["use_meeting_time"],
+                include_location=flags["include_location"],
             )
         )
     return jobs

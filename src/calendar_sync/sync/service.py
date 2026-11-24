@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Callable, Protocol
 
 from ..google_calendar.models import CalendarEvent
+from ..spielerplus.exceptions import SpielerPlusError
 from ..spielerplus.models import SpielerPlusEvent
+
+logger = logging.getLogger(__name__)
 
 
 class SpielerPlusSource(Protocol):
     def get_events(self) -> list[SpielerPlusEvent]: ...
+
+    def get_event_location(self, event: SpielerPlusEvent) -> str | None: ...
 
 
 class GoogleCalendarTarget(Protocol):
@@ -80,12 +87,18 @@ class SyncService:
         title_builder: TitleBuilder = default_title,
         description_builder: DescriptionBuilder = default_description,
         use_meeting_time: bool = False,
+        include_location: bool = False,
+        location_lookahead_days: int = 14,
+        now: Callable[[], datetime] = datetime.now,
     ):
         self._spielerplus = spielerplus
         self._google_calendar = google_calendar
         self._title_builder = title_builder
         self._description_builder = description_builder
         self._use_meeting_time = use_meeting_time
+        self._include_location = include_location
+        self._location_lookahead = timedelta(days=location_lookahead_days)
+        self._now = now
 
     def sync(self) -> SyncResult:
         sp_events = self._spielerplus.get_events()
@@ -95,9 +108,9 @@ class SyncService:
         seen: set[str] = set()
 
         for sp_event in sp_events:
-            desired = self._to_calendar_event(sp_event)
+            current = existing.get(sp_event.uid)
+            desired = self._to_calendar_event(sp_event, current)
             seen.add(desired.external_id)
-            current = existing.get(desired.external_id)
 
             if current is None:
                 self._google_calendar.create_event(desired)
@@ -110,6 +123,7 @@ class SyncService:
                         description=desired.description,
                         start=desired.start,
                         end=desired.end,
+                        location=desired.location,
                         google_id=current.google_id,
                     )
                 )
@@ -124,7 +138,28 @@ class SyncService:
 
         return result
 
-    def _to_calendar_event(self, event: SpielerPlusEvent) -> CalendarEvent:
+    def _location_for(self, event: SpielerPlusEvent, current: CalendarEvent | None) -> str | None:
+        """Address for the calendar entry.
+
+        Detail pages cost one request each and ``get_events`` returns *every*
+        upcoming event, so addresses are only looked up for events starting
+        within the lookahead window; others keep whatever Google already has.
+        A failed lookup also keeps the current value rather than clearing it.
+        """
+        current_location = current.location if current is not None else None
+        if not self._include_location:
+            return current_location
+        if event.start > self._now() + self._location_lookahead:
+            return current_location
+        try:
+            return self._spielerplus.get_event_location(event)
+        except SpielerPlusError as exc:
+            logger.warning("could not look up the address of %s: %s", event.uid, exc)
+            return current_location
+
+    def _to_calendar_event(
+        self, event: SpielerPlusEvent, current: CalendarEvent | None = None
+    ) -> CalendarEvent:
         start = event.start
         description = self._description_builder(event)
         if self._use_meeting_time and event.meetup is not None:
@@ -139,6 +174,7 @@ class SyncService:
             description=description,
             start=start,
             end=event.end,
+            location=self._location_for(event, current),
         )
 
 
@@ -148,4 +184,5 @@ def _differs(current: CalendarEvent, desired: CalendarEvent) -> bool:
         or current.description != desired.description
         or current.start != desired.start
         or current.end != desired.end
+        or current.location != desired.location
     )

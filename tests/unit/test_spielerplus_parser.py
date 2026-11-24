@@ -149,3 +149,47 @@ def test_parse_events_extracts_meetup_when_before_start(load_fixture):
     assert events[0].meetup is None
     assert events[1].meetup == events[1].start.replace(hour=17, minute=0)
     assert events[2].meetup is None
+
+
+def test_parse_event_location_training(load_fixture):
+    html = load_fixture("event_detail_training.html")
+    assert parser.is_event_detail_page(html) is True
+    assert parser.parse_event_location(html) == "Straße 1, 12345 Ort"
+
+
+def test_parse_event_location_game_includes_venue_name(load_fixture):
+    html = load_fixture("event_detail_game.html")
+    assert parser.is_event_detail_page(html) is True
+    assert parser.parse_event_location(html) == "TSV Auswärts, Sportplatzstraße 1, 12345 Auswärts"
+
+
+def test_parse_event_location_none_when_page_has_no_address():
+    html = '<div class="participation-event-view"></div><div class="info-area-content"><h4>Notiz</h4><small>x</small></div>'
+    assert parser.is_event_detail_page(html) is True
+    assert parser.parse_event_location(html) is None
+
+
+@pytest.mark.parametrize("value", ["", "  ", "-"])
+def test_parse_event_location_ignores_placeholder_values(value):
+    html = f'<div class="info-area-content"><h4>Adresse</h4><small>{value}</small></div>'
+    assert parser.parse_event_location(html) is None
+
+
+def test_is_event_detail_page_false_for_other_pages(load_fixture):
+    assert parser.is_event_detail_page(load_fixture("login_page.html")) is False
+    assert parser.is_event_detail_page(load_fixture("events_page.html")) is False
+
+
+def test_parse_events_reads_detail_path_from_link_or_falls_back(load_fixture):
+    events = parser.parse_events(load_fixture("events_page.html"), reference_date=REFERENCE_DATE)
+    assert events[0].detail_path == f"/{events[0].event_type}/view?id={events[0].id}"
+
+    html = (
+        '<div class="list event"><div class="panel" id="event-game-42">'
+        '<a class="event-header-border" href="/game/view?id=42"></a>'
+        '<div class="panel-heading-info"><div class="panel-subtitle">18.07.</div></div>'
+        '<div class="panel-heading-text"><div class="panel-title">Spiel</div></div>'
+        '<table><tr><td class="event-time-value">10:00</td></tr></table></div></div>'
+    )
+    (event,) = parser.parse_events(html, reference_date=REFERENCE_DATE)
+    assert event.detail_path == "/game/view?id=42"

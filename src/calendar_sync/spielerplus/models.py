@@ -40,6 +40,10 @@ class SpielerPlusEvent:
 
     attendance: Attendance
 
+    detail_path: str | None = None
+    """Path of the event's detail page (e.g. ``/game/view?id=123``), as linked
+    from the events list; used to look up details such as the address."""
+
     meetup: datetime | None = None
     """Meeting time ("Treffen"), if SpielerPlus publishes one and it lies
     before :attr:`start`; otherwise ``None``."""

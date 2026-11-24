@@ -20,6 +20,10 @@
 # SpielerPlus meeting time ("Treffen") instead of the start time; it falls
 # back to CALENDAR_SYNC_USE_MEETING_TIME when unset.
 #
+# `include_location = true` copies the event address from SpielerPlus into
+# the calendar entry's location; it falls back to
+# CALENDAR_SYNC_INCLUDE_LOCATION when unset.
+#
 # `sync run` processes every job in this file in one go (use
 # `--job <name>` to run just one); each job's events are matched and
 # managed independently via its own sync_tag, so jobs can safely target

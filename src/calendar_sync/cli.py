@@ -83,7 +83,11 @@ def cmd_sync(args: argparse.Namespace) -> int:
     if jobs is None:
         google_calendar = _build_google_client(settings)
         result = SyncService(
-            spielerplus, google_calendar, use_meeting_time=settings.use_meeting_time
+            spielerplus,
+            google_calendar,
+            use_meeting_time=settings.use_meeting_time,
+            include_location=settings.include_location,
+            location_lookahead_days=settings.location_lookahead_days,
         ).sync()
         _print_sync_result(None, result)
         return 0
@@ -101,6 +105,8 @@ def cmd_sync(args: argparse.Namespace) -> int:
                 google_calendar,
                 title_builder=title_builder,
                 use_meeting_time=job.use_meeting_time,
+                include_location=job.include_location,
+                location_lookahead_days=settings.location_lookahead_days,
             ).sync()
             _print_sync_result(job.name, result)
         except (SpielerPlusError, GoogleCalendarError) as exc:
@@ -161,7 +167,8 @@ def cmd_list_jobs(args: argparse.Namespace) -> int:
             f"{job.name}: spielerplus_user_id={job.spielerplus_user_id!r} "
             f"google_calendar_id={job.google_calendar_id!r} sync_tag={job.sync_tag!r} "
             f"timezone={job.timezone!r} google_token_path={job.google_token_path} "
-            f"title_prefix={job.title_prefix!r} use_meeting_time={job.use_meeting_time}"
+            f"title_prefix={job.title_prefix!r} use_meeting_time={job.use_meeting_time} "
+            f"include_location={job.include_location}"
         )
     return 0
 

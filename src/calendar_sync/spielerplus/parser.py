@@ -208,6 +208,9 @@ def _parse_event(event_el: Tag, reference_date: datetime) -> SpielerPlusEvent:
     else:
         end = start + DEFAULT_EVENT_DURATION
 
+    link_el = panel.select_one("a.event-header-border[href]")
+    detail_path = link_el["href"] if link_el is not None else f"/{event_type}/view?id={event_id}"
+
     widget = event_el.select_one(".participation-widget-buttons")
     attendance = _parse_attendance(widget) if widget is not None else Attendance.UNKNOWN
 
@@ -221,6 +224,7 @@ def _parse_event(event_el: Tag, reference_date: datetime) -> SpielerPlusEvent:
         end_is_estimated=end_is_estimated,
         attendance=attendance,
         meetup=meetup,
+        detail_path=detail_path,
     )
 
 
@@ -236,3 +240,33 @@ def parse_events(html: str, reference_date: datetime | None = None) -> list[Spie
 
     soup = BeautifulSoup(html, "html.parser")
     return [_parse_event(event_el, reference_date) for event_el in soup.select(".event")]
+
+
+_ADDRESS_LABELS = {"adresse", "address"}
+
+
+def is_event_detail_page(html: str) -> bool:
+    """True for a (logged-in) event detail page, as opposed to e.g. the
+    login page or an error page."""
+    return BeautifulSoup(html, "html.parser").select_one(".participation-event-view") is not None
+
+
+def parse_event_location(html: str) -> str | None:
+    """Extract the address shown on an event detail page ("Adresse" box).
+
+    Returns ``None`` if the page has no address. Use
+    :func:`is_event_detail_page` first to tell "no address" from "not an
+    event page at all".
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    for area in soup.select(".info-area-content"):
+        label = area.find("h4")
+        if label is None or label.get_text(strip=True).lower() not in _ADDRESS_LABELS:
+            continue
+        value = area.find("small")
+        if value is None:
+            continue
+        text = re.sub(r"\s+", " ", value.get_text(" ", strip=True)).strip()
+        if text and text not in {"-", "\u2013", "-:-"}:
+            return text
+    return None

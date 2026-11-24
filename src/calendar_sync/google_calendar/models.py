@@ -21,3 +21,4 @@ class CalendarEvent:
     end: datetime
     google_id: str | None = None
     etag: str | None = None
+    location: str | None = None
