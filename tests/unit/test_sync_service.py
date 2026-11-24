@@ -1,6 +1,8 @@
+from dataclasses import replace
 from datetime import datetime
 
 from calendar_sync.google_calendar.models import CalendarEvent
+from calendar_sync.spielerplus.exceptions import SpielerPlusError
 from calendar_sync.spielerplus.models import Attendance, SpielerPlusEvent
 from calendar_sync.sync.service import (
     SyncService,
@@ -38,6 +40,7 @@ class FakeGoogleCalendar:
             description=event.description,
             start=event.start,
             end=event.end,
+            location=event.location,
             google_id=google_id,
         )
         self.events[event.external_id] = created
@@ -264,3 +267,120 @@ def test_sync_falls_back_to_start_when_no_meeting_time():
 
     assert gc.created[0].start == datetime(2026, 7, 18, 19, 0)
     assert "Meeting time" not in gc.created[0].description
+
+
+class FakeSpielerPlusWithLocations(FakeSpielerPlus):
+    def __init__(self, events, locations=None, fail=False):
+        super().__init__(events)
+        self.locations = locations or {}
+        self.fail = fail
+        self.lookups = []
+
+    def get_event_location(self, event):
+        self.lookups.append(event.uid)
+        if self.fail:
+            raise SpielerPlusError("boom")
+        return self.locations.get(event.uid)
+
+
+NOW = datetime(2026, 7, 10, 12, 0)
+SOON = datetime(2026, 7, 18, 19, 0)   # 8 days ahead
+LATER = datetime(2026, 9, 1, 19, 0)   # far in the future
+
+
+def _located_service(sp, gc, **kwargs):
+    return SyncService(sp, gc, include_location=True, now=lambda: NOW, **kwargs)
+
+
+def test_location_is_not_looked_up_unless_enabled():
+    sp = FakeSpielerPlusWithLocations([_sp_event()], {"training-111": "Platz 1"})
+    gc = FakeGoogleCalendar()
+    SyncService(sp, gc, now=lambda: NOW).sync()
+
+    assert sp.lookups == []
+    assert gc.created[0].location is None
+
+
+def test_location_is_written_to_new_events():
+    sp = FakeSpielerPlusWithLocations([_sp_event(start=SOON, end=SOON.replace(hour=21))], {"training-111": "Platz 1"})
+    gc = FakeGoogleCalendar()
+    _located_service(sp, gc).sync()
+
+    assert gc.created[0].location == "Platz 1"
+
+
+def test_changed_location_updates_the_existing_event():
+    sp = FakeSpielerPlusWithLocations([_sp_event(start=SOON, end=SOON.replace(hour=21))], {"training-111": "Neuer Platz"})
+    gc = FakeGoogleCalendar()
+    _located_service(sp, gc).sync()  # create
+    gc.events["training-111"] = replace(gc.events["training-111"], location="Alter Platz")
+
+    result = _located_service(sp, gc).sync()
+
+    assert result.updated == ["training-111"]
+    assert gc.updated[-1].location == "Neuer Platz"
+
+
+def test_unchanged_location_is_a_noop():
+    sp = FakeSpielerPlusWithLocations([_sp_event(start=SOON, end=SOON.replace(hour=21))], {"training-111": "Platz 1"})
+    gc = FakeGoogleCalendar()
+    _located_service(sp, gc).sync()
+    result = _located_service(sp, gc).sync()
+
+    assert result.unchanged == ["training-111"] and not gc.updated
+
+
+def test_events_beyond_the_lookahead_window_are_not_looked_up():
+    sp = FakeSpielerPlusWithLocations(
+        [_sp_event(id="1", start=SOON, end=SOON.replace(hour=21)),
+         _sp_event(id="2", start=LATER, end=LATER.replace(hour=21))],
+        {"training-1": "A", "training-2": "B"},
+    )
+    gc = FakeGoogleCalendar()
+    _located_service(sp, gc, location_lookahead_days=14).sync()
+
+    assert sp.lookups == ["training-1"]
+    assert gc.events["training-2"].location is None
+
+
+def test_far_future_event_keeps_the_location_google_already_has():
+    ev = _sp_event(start=LATER, end=LATER.replace(hour=21))
+    gc = FakeGoogleCalendar()
+    SyncService(FakeSpielerPlus([ev]), gc, now=lambda: NOW).sync()
+    gc.events["training-111"] = replace(gc.events["training-111"], location="Manuell")
+
+    result = _located_service(FakeSpielerPlusWithLocations([ev]), gc).sync()
+
+    assert result.unchanged == ["training-111"]
+
+
+def test_failed_lookup_keeps_the_current_location_instead_of_clearing_it():
+    ev = _sp_event(start=SOON, end=SOON.replace(hour=21))
+    gc = FakeGoogleCalendar()
+    _located_service(FakeSpielerPlusWithLocations([ev], {"training-111": "Platz 1"}), gc).sync()
+
+    result = _located_service(FakeSpielerPlusWithLocations([ev], fail=True), gc).sync()
+
+    assert result.unchanged == ["training-111"]
+    assert gc.events["training-111"].location == "Platz 1"
+
+
+def test_event_without_an_address_gets_its_location_cleared():
+    ev = _sp_event(start=SOON, end=SOON.replace(hour=21))
+    gc = FakeGoogleCalendar()
+    _located_service(FakeSpielerPlusWithLocations([ev], {"training-111": "Platz 1"}), gc).sync()
+
+    result = _located_service(FakeSpielerPlusWithLocations([ev], {}), gc).sync()
+
+    assert result.updated == ["training-111"]
+    assert gc.updated[-1].location is None
+
+
+def test_disabling_location_leaves_existing_locations_alone():
+    ev = _sp_event(start=SOON, end=SOON.replace(hour=21))
+    gc = FakeGoogleCalendar()
+    _located_service(FakeSpielerPlusWithLocations([ev], {"training-111": "Platz 1"}), gc).sync()
+
+    result = SyncService(FakeSpielerPlus([ev]), gc, now=lambda: NOW).sync()
+
+    assert result.unchanged == ["training-111"]

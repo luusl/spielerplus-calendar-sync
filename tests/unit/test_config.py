@@ -228,3 +228,35 @@ def test_load_jobs_reads_and_validates_use_meeting_time(tmp_path):
     bad.write_text('[[job]]\nname = "a"\nuse_meeting_time = "yes"\n')
     with pytest.raises(ConfigError):
         load_jobs(bad)
+
+
+def test_location_settings_defaults_and_overrides():
+    s = Settings.from_env(_BASE_ENV)
+    assert s.include_location is False and s.location_lookahead_days == 14
+
+    s = Settings.from_env({**_BASE_ENV, "CALENDAR_SYNC_INCLUDE_LOCATION": "true",
+                           "CALENDAR_SYNC_LOCATION_LOOKAHEAD_DAYS": "30"})
+    assert s.include_location is True and s.location_lookahead_days == 30
+
+
+@pytest.mark.parametrize("raw", ["abc", "-1", "1.5"])
+def test_location_lookahead_days_must_be_a_non_negative_integer(raw):
+    with pytest.raises(ConfigError):
+        Settings.from_env({**_BASE_ENV, "CALENDAR_SYNC_LOCATION_LOOKAHEAD_DAYS": raw})
+
+
+def test_job_include_location_overrides_or_inherits_the_default():
+    settings = Settings.from_env({**_BASE_ENV, "CALENDAR_SYNC_INCLUDE_LOCATION": "true"})
+    assert JobConfig(name="a").resolve(settings).include_location is True
+    assert JobConfig(name="b", include_location=False).resolve(settings).include_location is False
+
+
+def test_load_jobs_reads_and_validates_include_location(tmp_path):
+    ok = tmp_path / "ok.toml"
+    ok.write_text('[[job]]\nname = "a"\ninclude_location = true\n')
+    assert load_jobs(ok)[0].include_location is True
+
+    bad = tmp_path / "bad.toml"
+    bad.write_text('[[job]]\nname = "a"\ninclude_location = "yes"\n')
+    with pytest.raises(ConfigError):
+        load_jobs(bad)

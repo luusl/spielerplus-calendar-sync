@@ -9,6 +9,7 @@ scrape the "Events" page. See ``parser.py`` for the HTML parsing itself.
 from __future__ import annotations
 
 import logging
+from urllib.parse import urljoin
 
 import requests
 
@@ -136,6 +137,24 @@ class SpielerPlusClient:
         # requests can shift one into two batches.
         unique = {event.uid: event for event in events}
         return list(unique.values())
+
+    def get_event_location(self, event: SpielerPlusEvent) -> str | None:
+        """Fetch the event's detail page and return its address, or ``None`` if
+        the event has none. Raises :class:`SpielerPlusError` if the page could
+        not be loaded or is not an event page (so callers can tell a failure
+        apart from "no address")."""
+        self._require_login()
+        path = event.detail_path or f"/{event.event_type}/view?id={event.id}"
+        url = urljoin(BASE_URL, path)
+        try:
+            response = self._get(url)
+        except requests.RequestException as exc:
+            raise SpielerPlusError(f"could not load detail page of {event.uid}: {exc}") from exc
+        if not parser.is_event_detail_page(response.text):
+            raise ParseError(
+                f"expected the detail page of {event.uid}, got {parser.page_title(response.text)!r}"
+            )
+        return parser.parse_event_location(response.text)
 
     def _get_more_events(self, offset: int) -> tuple[list[SpielerPlusEvent], int]:
         """Fetch the batch of events following the first ``offset`` ones.

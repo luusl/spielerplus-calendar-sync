@@ -65,6 +65,8 @@ cp .env.example .env
 | `CALENDAR_SYNC_TIMEZONE` | no (default `Europe/Berlin`) | IANA timezone used for created events |
 | `CALENDAR_SYNC_TAG` | no (default `spielerplus-sync`) | Tag used to identify events this tool manages |
 | `CALENDAR_SYNC_USE_MEETING_TIME` | no (default `false`) | Start events at the meeting time ("Treffen") instead of the start time; the real start goes into the description. Can also be set per job as `use_meeting_time = true` in the jobs file |
+| `CALENDAR_SYNC_INCLUDE_LOCATION` | no (default `false`) | Copy the event address ("Adresse" on the event's detail page) into the calendar entry's location. Costs one extra request per event. Can also be set per job as `include_location = true` |
+| `CALENDAR_SYNC_LOCATION_LOOKAHEAD_DAYS` | no (default `14`) | Only events starting within this many days get their address looked up; events further out get it once they enter the window. A failed lookup keeps the current location instead of clearing it |
 | `CALENDAR_SYNC_JOBS_FILE` | no | Path to a multi-job TOML config — see [Multiple jobs](#multiple-jobs) |
 
 ### Setting up Google Calendar API access

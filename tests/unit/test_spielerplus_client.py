@@ -254,3 +254,72 @@ def test_set_attendance_raises_on_unexpected_status(load_fixture):
     )
     with pytest.raises(SpielerPlusError):
         client.set_attendance(event, Attendance.ACCEPTED, user_id="42")
+
+
+def _detail_event(**overrides):
+    values = dict(
+        id="12345678", event_type="game", title="Spiel", subtitle="", start=datetime(2026, 11, 7, 11, 0),
+        end=datetime(2026, 11, 7, 13, 0), end_is_estimated=True, attendance=Attendance.UNKNOWN,
+        detail_path="/game/view?id=12345678",
+    )
+    values.update(overrides)
+    return SpielerPlusEvent(**values)
+
+
+def _logged_in_client(load_fixture):
+    responses.add(responses.GET, EVENTS_URL, body=load_fixture("events_page.html"))
+    client = SpielerPlusClient()
+    client.login("me@example.com", "hunter2")
+    return client
+
+
+def test_get_event_location_requires_login_first():
+    with pytest.raises(AuthenticationError):
+        SpielerPlusClient().get_event_location(_detail_event())
+
+
+@responses.activate
+def test_get_event_location_fetches_detail_page_and_parses_address(load_fixture):
+    client = _logged_in_client(load_fixture)
+    responses.add(
+        responses.GET,
+        "https://www.spielerplus.de/game/view?id=12345678",
+        body=load_fixture("event_detail_game.html"),
+    )
+
+    location = client.get_event_location(_detail_event())
+
+    assert location.startswith("TSV Auswärts, Sportplatzstraße 1, 12345 Auswärts")
+    assert responses.calls[-1].request.url == "https://www.spielerplus.de/game/view?id=12345678"
+
+
+@responses.activate
+def test_get_event_location_falls_back_to_type_and_id_without_detail_path(load_fixture):
+    client = _logged_in_client(load_fixture)
+    responses.add(
+        responses.GET,
+        "https://www.spielerplus.de/training/view?id=7",
+        body=load_fixture("event_detail_training.html"),
+    )
+
+    event = _detail_event(id="7", event_type="training", detail_path=None)
+    assert client.get_event_location(event) == "Straße 1, 12345 Ort"
+
+
+@responses.activate
+def test_get_event_location_raises_for_non_event_page(load_fixture):
+    # e.g. the session expired and SpielerPlus served the login page instead
+    client = _logged_in_client(load_fixture)
+    responses.add(
+        responses.GET, "https://www.spielerplus.de/game/view?id=12345678", body=load_fixture("login_page.html")
+    )
+    with pytest.raises(ParseError):
+        client.get_event_location(_detail_event())
+
+
+@responses.activate
+def test_get_event_location_wraps_http_errors(load_fixture):
+    client = _logged_in_client(load_fixture)
+    responses.add(responses.GET, "https://www.spielerplus.de/game/view?id=12345678", status=500)
+    with pytest.raises(SpielerPlusError):
+        client.get_event_location(_detail_event())

@@ -151,7 +151,7 @@ class GoogleCalendarClient:
             raise GoogleCalendarError(f"failed to delete event {google_id!r}: {exc}") from exc
 
     def _to_api(self, event: CalendarEvent) -> dict[str, Any]:
-        return {
+        body: dict[str, Any] = {
             "summary": event.title,
             "description": event.description,
             "start": {"dateTime": event.start.isoformat(), "timeZone": self._timezone},
@@ -163,6 +163,9 @@ class GoogleCalendarClient:
                 }
             },
         }
+        if event.location:  # omitted on update = cleared (events.update replaces the resource)
+            body["location"] = event.location
+        return body
 
     @staticmethod
     def _from_api(item: dict[str, Any]) -> CalendarEvent:
@@ -180,6 +183,7 @@ class GoogleCalendarClient:
             end=_parse_api_datetime(item["end"]),
             google_id=item["id"],
             etag=item.get("etag"),
+            location=item.get("location") or None,
         )
 
 

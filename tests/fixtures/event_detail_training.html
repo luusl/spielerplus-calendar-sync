@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head><title>Mi, 18.11.2026</title></head>
+<body class="loggedin">
+<div class="classic-modal hidden-print modal" id="event-center-modal">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<button class="close" type="button">×</button>
+<div id="event-center-modal_title"></div>
+</div>
+<div class="modal-body">
+<div id="event-center-modal_content"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="main-header"><div class="headline_small"><div><div class="arrow-left"><a href="/events/to-event?eventType=training&amp;eventId=12345678&amp;direction=prev"><i class="fa-arrow-left sp fa-fw fa-2x" id="w23"></i></a></div><div class="arrow-right"><a href="/events/to-event?eventType=training&amp;eventId=12345678&amp;direction=next"><i class="fa-arrow-right sp fa-fw fa-2x" id="w24"></i></a></div></div>Training</div><div class="subline"><div><span id="sp-event-countdown-12345678">Zeit zum Zu-/Absagen abgelaufen</span></div></div></div>
+<div class="wrap">
+<div class="container">
+<div class="row participation-event-view">
+<div class="participation-widget participation-widget-training-12345678"><div class="btn-group participation-widget-buttons"><button class="participation-button" title="Zugesagt" type="button"><i class="fa-participation-yes sp fa-fw fa-lg" id="w1"></i><div class="participation-number">8</div></button><button class="participation-button" title="Unsicher" type="button"><i class="fa-participation-maybe sp fa-fw fa-lg" id="w2"></i><div class="participation-number">0</div></button><button class="participation-button selected" title="Absagen / Abwesend" type="button"><i class="fa-participation-no sp fa-fw fa-lg" id="w3"></i><div class="participation-number">9</div></button></div></div>
+<div class="classic-modal modal" id="participation-modal">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<button class="close" type="button"><span>×</span><span class="sr-only">Schließen</span></button>
+<i class="arrow-back visible-xs fa-arrow-large-left sp fa-fw fa-lg" id="w4"></i><h3>Teilnehmerliste</h3>
+</div>
+</div>
+</div>
+</div>
+<div class="classic-modal modal" id="participation-form-modal">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<button class="close" type="button"><span>×</span><span class="sr-only">Schließen</span></button>
+<i class="arrow-back visible-xs fa-arrow-large-left sp fa-fw fa-lg" id="w5"></i><h3 class="visible-xs">Teilnahme</h3>
+</div>
+</div>
+</div>
+</div>
+<div class="classic-modal modal" id="participations-modal">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<button class="close" type="button"><span>×</span><span class="sr-only">Schließen</span></button>
+<i class="arrow-back visible-xs fa-arrow-large-left sp fa-fw fa-lg" id="w6"></i><h3>Wann zu/abgesagt</h3>
+</div>
+</div>
+</div>
+</div>
+<button class="participants-button" title="Teilnehmer anzeigen" type="button"><i class="fa-nav-members sp fa-fw fa-lg" id="w7"></i></button></div>
+<div class="content">
+<div class="event-time">
+<div class="col-xs-4">
+<div class="event-time-item">
+<div class="event-time-label">Treffen</div><div class="event-time-value">16:50</div>
+</div>
+</div>
+<div class="col-xs-4">
+<div class="event-time-item">
+<div class="event-time-label">Beginn</div><div class="event-time-value">17:00</div>
+</div>
+</div>
+<div class="col-xs-4">
+<div class="event-time-item">
+<div class="event-time-label">Ende</div><div class="event-time-value">18:30 </div>
+</div>
+</div>
+</div>
+<div class="event-time">
+<div class="col-xs-12">
+<div class="event-time-item">
+<div class="event-time-label">
+                    Dies ist ein Serientermin.                </div>
+</div>
+</div>
+</div>
+<div class="row">
+<div class="base-events">
+<div class="col-md-6">
+<div id="anchor-assignments"></div>
+<div class="last-week text-left">
+	Aufgaben</div>
+<div class="front-page-placeholder"><div class="front-page-placeholder-label">Es wurden keine Aufgaben erstellt.</div></div><div id="anchor-fitness"></div>
+<div class="last-week text-left">
+    Videos    </div>
+<div class="front-page-placeholder">
+<div class="front-page-placeholder-label">
+        Noch kein Video verfügbar.    </div>
+</div>
+</div>
+<div class="col-md-6">
+<div id="anchor-lineups"></div>
+<div id="vue-lineup">
+<router-view></router-view>
+</div>
+<div id="anchor-groups"></div>
+<div id="vue-group">
+<router-view></router-view>
+</div>
+<div id="anchor-carpools"></div>
+<div class="classic-modal hidden-print modal" id="modal">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<button class="close" type="button">×</button>
+<div id="modal_title"></div>
+</div>
+<div class="modal-body">
+<div id="modal_content"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="last-week text-left">
+    Fahrgemeinschaft</div>
+<div class="front-page-placeholder">
+<div class="front-page-placeholder-label">
+        Keiner hat einen Platz gesucht oder angeboten.    </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="green-background-container">
+<div class="wrap">
+<div class="container">
+<div class="sub-navigation"><div class="list"><button class="list-item bottom-border" title="Teilnehmer anzeigen" type="button"> <span class="list-icon size-24">
+<i class="fa-circle-list sp fa-fw fa-lg" id="w27"></i>
+</span>
+<span class="list-content">
+<span class="list-label">
+                Teilnehmerliste
+            </span>
+</span>
+<span class="list-drilldown">
+<i class="fa-drilldown sp fa-sm" id="w28"></i>
+</span></button><button class="btnOpenModal list-item bottom-border" type="button"> <span class="list-icon size-24">
+<i class="fa-circle-star sp fa-fw fa-lg" id="w29"></i>
+</span>
+<span class="list-content">
+<span class="list-label">
+                Beteiligungen exportieren
+            </span>
+</span>
+<span class="list-drilldown">
+<i class="fa-drilldown sp fa-sm" id="w30"></i>
+</span></button></div></div>
+</div>
+</div>
+</div>
+<div class="green-background-bottom">
+<div class="wrap">
+<div class="container">
+<div class="info-area"><a href="javascript:void(0);"><div class="info-area-content"><h4>Adresse</h4><small>Straße 1, 12345 Ort</small></div></a></div>
+</div>
+</div>
+</div>
+<div class="classic-modal modal" id="premium-required-modal">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<button class="close" type="button">×</button>
+<i class="arrow-back visible-xs fa-arrow-large-left sp fa-fw fa-lg" id="w33"></i>
+</div>
+<div class="modal-body">
+<div class="modal-icon-headline">
+<div class="card-head">
+ <h1>Premium erforderlich</h1>
+<p>
+        Um diese Funktion nutzen zu können, benötigt dein Team eine Premium-Mitgliedschaft. Bitte kontaktiere deinen Trainer für weitere Informationen.    </p>
+</div>
+</div><div class="row"><div class="col-sm-6 col-xs-12"><a class="btn btn-success" href="/premium/onboarding/index?type=team">Mehr erfahren</a><br/><br/></div><div class="col-sm-6 col-xs-12"><button class="btn btn-danger" type="button">Abbrechen</button></div></div>
+</div>
+</div>
+</div>
+</div>
+<div id="body-bottom-space"></div>
+</body>
+</html>

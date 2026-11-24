@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -242,3 +243,26 @@ def test_build_service_runs_oauth_flow_when_no_cached_token(tmp_path):
         flow_cls.from_client_secrets_file.assert_called_once_with(
             "creds.json", ["https://www.googleapis.com/auth/calendar.events"]
         )
+
+
+def test_create_event_sends_location_when_set_and_omits_it_otherwise():
+    service = MagicMock()
+    service.events.return_value.insert.return_value.execute.return_value = _api_event("g", "training-111")
+    client = _make_client(service)
+
+    client.create_event(replace(_sample_event(), location="Sportplatz 1, 5112 Ort"))
+    assert service.events.return_value.insert.call_args.kwargs["body"]["location"] == "Sportplatz 1, 5112 Ort"
+
+    client.create_event(_sample_event())
+    assert "location" not in service.events.return_value.insert.call_args.kwargs["body"]
+
+
+def test_list_managed_events_reads_location():
+    service = MagicMock()
+    with_location = dict(_api_event("g1", "training-111"), location="Sportplatz 1")
+    service.events.return_value.list.return_value.execute.return_value = {
+        "items": [with_location, _api_event("g2", "training-222")]
+    }
+    events = _make_client(service).list_managed_events()
+    assert events["training-111"].location == "Sportplatz 1"
+    assert events["training-222"].location is None
