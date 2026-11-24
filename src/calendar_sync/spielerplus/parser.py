@@ -191,6 +191,16 @@ def _parse_event(event_el: Tag, reference_date: datetime) -> SpielerPlusEvent:
         raise ParseError(f"could not determine start time for event {event_id}")
     start = datetime.combine(event_date, datetime.strptime(start_str, "%H:%M").time())
 
+    # The meeting time is only meaningful when there is a separate start slot
+    # and it lies before the start.
+    meetup = None
+    if len(time_values) > 1:
+        meetup_str = parse_time_string(time_values[0])
+        if meetup_str is not None:
+            candidate = datetime.combine(event_date, datetime.strptime(meetup_str, "%H:%M").time())
+            if candidate < start:
+                meetup = candidate
+
     end_str = parse_time_string(time_values[2]) if len(time_values) > 2 else None
     end_is_estimated = end_str is None
     if end_str is not None:
@@ -210,6 +220,7 @@ def _parse_event(event_el: Tag, reference_date: datetime) -> SpielerPlusEvent:
         end=end,
         end_is_estimated=end_is_estimated,
         attendance=attendance,
+        meetup=meetup,
     )
 
 

@@ -79,11 +79,13 @@ class SyncService:
         google_calendar: GoogleCalendarTarget,
         title_builder: TitleBuilder = default_title,
         description_builder: DescriptionBuilder = default_description,
+        use_meeting_time: bool = False,
     ):
         self._spielerplus = spielerplus
         self._google_calendar = google_calendar
         self._title_builder = title_builder
         self._description_builder = description_builder
+        self._use_meeting_time = use_meeting_time
 
     def sync(self) -> SyncResult:
         sp_events = self._spielerplus.get_events()
@@ -123,11 +125,19 @@ class SyncService:
         return result
 
     def _to_calendar_event(self, event: SpielerPlusEvent) -> CalendarEvent:
+        start = event.start
+        description = self._description_builder(event)
+        if self._use_meeting_time and event.meetup is not None:
+            # The calendar entry starts at the meeting time; the real start
+            # stays visible in the description. Events without a (usable)
+            # meeting time fall back to the normal start.
+            start = event.meetup
+            description += f"\nMeeting time: {event.meetup:%H:%M}\nStart: {event.start:%H:%M}"
         return CalendarEvent(
             external_id=event.uid,
             title=self._title_builder(event),
-            description=self._description_builder(event),
-            start=event.start,
+            description=description,
+            start=start,
             end=event.end,
         )
 

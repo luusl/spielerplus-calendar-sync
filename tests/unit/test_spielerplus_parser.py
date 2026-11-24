@@ -141,3 +141,11 @@ def test_event_uid_is_stable_identifier(load_fixture):
     events = parser.parse_events(load_fixture("events_page.html"), reference_date=REFERENCE_DATE)
     assert events[0].uid == "training-111"
     assert events[1].uid == "match-222"
+
+
+def test_parse_events_extracts_meetup_when_before_start(load_fixture):
+    events = parser.parse_events(load_fixture("events_page.html"), reference_date=REFERENCE_DATE)
+    # slots: ["-:-", "19:00"] / ["17:00", "17:30", "19:30"] / ["-:-", "7:00 PM", "9:00 PM"]
+    assert events[0].meetup is None
+    assert events[1].meetup == events[1].start.replace(hour=17, minute=0)
+    assert events[2].meetup is None

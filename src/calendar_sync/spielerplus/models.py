@@ -40,6 +40,10 @@ class SpielerPlusEvent:
 
     attendance: Attendance
 
+    meetup: datetime | None = None
+    """Meeting time ("Treffen"), if SpielerPlus publishes one and it lies
+    before :attr:`start`; otherwise ``None``."""
+
     @property
     def uid(self) -> str:
         """A stable identifier used to match this event to a Google Calendar

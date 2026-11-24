@@ -196,3 +196,35 @@ def test_shipped_example_jobs_file_is_valid():
     assert {j.name for j in jobs} == {"u7", "u9", "herren-1", "thomas"}
     thomas = next(j for j in jobs if j.name == "thomas")
     assert thomas.title_prefix == "Thomas"
+
+
+_BASE_ENV = {"SPIELERPLUS_EMAIL": "me@example.com", "SPIELERPLUS_PASSWORD": "pw"}
+
+
+@pytest.mark.parametrize("raw,expected", [("true", True), ("1", True), ("YES", True), ("false", False), ("", False)])
+def test_use_meeting_time_env_parsing(raw, expected):
+    settings = Settings.from_env({**_BASE_ENV, "CALENDAR_SYNC_USE_MEETING_TIME": raw})
+    assert settings.use_meeting_time is expected
+
+
+def test_use_meeting_time_defaults_to_false_and_rejects_garbage():
+    assert Settings.from_env(_BASE_ENV).use_meeting_time is False
+    with pytest.raises(ConfigError):
+        Settings.from_env({**_BASE_ENV, "CALENDAR_SYNC_USE_MEETING_TIME": "maybe"})
+
+
+def test_job_use_meeting_time_overrides_or_inherits_the_default():
+    settings = Settings.from_env({**_BASE_ENV, "CALENDAR_SYNC_USE_MEETING_TIME": "true"})
+    assert JobConfig(name="a").resolve(settings).use_meeting_time is True
+    assert JobConfig(name="b", use_meeting_time=False).resolve(settings).use_meeting_time is False
+
+
+def test_load_jobs_reads_and_validates_use_meeting_time(tmp_path):
+    ok = tmp_path / "ok.toml"
+    ok.write_text('[[job]]\nname = "a"\nuse_meeting_time = true\n')
+    assert load_jobs(ok)[0].use_meeting_time is True
+
+    bad = tmp_path / "bad.toml"
+    bad.write_text('[[job]]\nname = "a"\nuse_meeting_time = "yes"\n')
+    with pytest.raises(ConfigError):
+        load_jobs(bad)

@@ -226,3 +226,41 @@ def test_default_description_omits_estimate_note_when_end_is_known():
     event = _sp_event(end_is_estimated=False)
     description = default_description(event)
     assert "estimated" not in description.lower()
+
+
+def test_sync_uses_meeting_time_as_start_when_enabled():
+    meetup = datetime(2026, 7, 18, 18, 30)
+    ev = SpielerPlusEvent(
+        id="1", event_type="training", title="Training", subtitle="",
+        start=datetime(2026, 7, 18, 19, 0), end=datetime(2026, 7, 18, 21, 0),
+        end_is_estimated=False, attendance=Attendance.UNKNOWN, meetup=meetup,
+    )
+    gc = FakeGoogleCalendar()
+    SyncService(FakeSpielerPlus([ev]), gc, use_meeting_time=True).sync()
+
+    created = gc.created[0]
+    assert created.start == meetup
+    assert created.end == ev.end
+    assert "Meeting time: 18:30" in created.description
+    assert "Start: 19:00" in created.description
+
+
+def test_sync_ignores_meeting_time_by_default():
+    ev = SpielerPlusEvent(
+        id="1", event_type="training", title="Training", subtitle="",
+        start=datetime(2026, 7, 18, 19, 0), end=datetime(2026, 7, 18, 21, 0),
+        end_is_estimated=False, attendance=Attendance.UNKNOWN, meetup=datetime(2026, 7, 18, 18, 30),
+    )
+    gc = FakeGoogleCalendar()
+    SyncService(FakeSpielerPlus([ev]), gc).sync()
+
+    assert gc.created[0].start == ev.start
+    assert "Meeting time" not in gc.created[0].description
+
+
+def test_sync_falls_back_to_start_when_no_meeting_time():
+    gc = FakeGoogleCalendar()
+    SyncService(FakeSpielerPlus([_sp_event()]), gc, use_meeting_time=True).sync()
+
+    assert gc.created[0].start == datetime(2026, 7, 18, 19, 0)
+    assert "Meeting time" not in gc.created[0].description

@@ -15,6 +15,22 @@ class ConfigError(Exception):
     """Raised when required configuration is missing or invalid."""
 
 
+_TRUE = {"1", "true", "yes", "on"}
+_FALSE = {"", "0", "false", "no", "off"}
+
+
+def _env_bool(env: dict[str, str], name: str, default: bool = False) -> bool:
+    raw = env.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in _TRUE:
+        return True
+    if value in _FALSE:
+        return False
+    raise ConfigError(f"{name} must be true or false, got {raw!r}")
+
+
 @dataclass(frozen=True)
 class Settings:
     """Shared configuration, read from the environment / ``.env``.
@@ -35,6 +51,7 @@ class Settings:
     timezone: str = "Europe/Berlin"
     sync_tag: str = "spielerplus-sync"
     jobs_file: Path | None = None
+    use_meeting_time: bool = False
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
@@ -57,6 +74,7 @@ class Settings:
             timezone=env.get("CALENDAR_SYNC_TIMEZONE", "Europe/Berlin"),
             sync_tag=env.get("CALENDAR_SYNC_TAG", "spielerplus-sync"),
             jobs_file=Path(jobs_file) if jobs_file else None,
+            use_meeting_time=_env_bool(env, "CALENDAR_SYNC_USE_MEETING_TIME"),
         )
 
 
@@ -76,6 +94,7 @@ class JobConfig:
     sync_tag: str | None = None
     timezone: str | None = None
     title_prefix: str | None = None
+    use_meeting_time: bool | None = None
 
     def resolve(self, settings: Settings) -> "ResolvedJob":
         calendar_id = self.google_calendar_id or settings.google_calendar_id
@@ -90,6 +109,9 @@ class JobConfig:
             sync_tag=self.sync_tag or settings.sync_tag,
             timezone=self.timezone or settings.timezone,
             title_prefix=self.title_prefix,
+            use_meeting_time=(
+                settings.use_meeting_time if self.use_meeting_time is None else self.use_meeting_time
+            ),
         )
 
 
@@ -104,6 +126,7 @@ class ResolvedJob:
     sync_tag: str
     timezone: str
     title_prefix: str | None = None
+    use_meeting_time: bool = False
 
 
 def load_jobs(path: str | Path) -> list[JobConfig]:
@@ -137,6 +160,10 @@ def load_jobs(path: str | Path) -> list[JobConfig]:
             raise ConfigError(f"duplicate job name {name!r} in {path}")
         seen_names.add(name)
 
+        use_meeting_time = entry.get("use_meeting_time")
+        if use_meeting_time is not None and not isinstance(use_meeting_time, bool):
+            raise ConfigError(f"job {name!r}: use_meeting_time must be true or false")
+
         token_path = entry.get("google_token_path")
         jobs.append(
             JobConfig(
@@ -147,6 +174,7 @@ def load_jobs(path: str | Path) -> list[JobConfig]:
                 sync_tag=entry.get("sync_tag"),
                 timezone=entry.get("timezone"),
                 title_prefix=entry.get("title_prefix"),
+                use_meeting_time=use_meeting_time,
             )
         )
     return jobs
